@@ -98,6 +98,7 @@ function App() {
     })
   }
 
+  //取得產品列表api
   const getProducts = async () => {
     try {
       const response = await axios.get(`${API_BASE}/api/${API_PATH}/admin/products`)
@@ -107,6 +108,52 @@ function App() {
     }
   }
 
+  //更新與新增產品api
+  const updateProduct = async (id) => {  //差別在id,所以（）寫id做傳入
+    let url =`${API_BASE}/api/${API_PATH}/admin/product`
+    let method = 'post'
+
+    if(modalType === 'edit'){
+      url = `${API_BASE}/api/${API_PATH}/admin/product/${id}`
+      method = 'put'
+    }
+
+    const productData = {
+      data:{
+        ...templateProduct,
+        origin_price: Number(templateProduct.origin_price), //做型態轉換
+        price: Number(templateProduct.price), //做型態轉換
+        is_enabled: templateProduct.is_enabled ? 1 : 0, //true回傳１,false回傳0
+        imagesUrl:[...templateProduct.imagesUrl.filter(url => url !== "")], //防呆用
+      }
+    }
+
+    try {
+      const response = await axios[method](url, productData); //小技巧 []裡面放上面設定的變數method,這樣就可以共用了
+      console.log(response.data);
+      alert(`${response.data.message}，${templateProduct.title}`);
+      getProducts();
+      closeModal();
+    } catch (error) {
+      console.log(error.response);
+    }
+
+  }
+
+  //刪除產品api
+  const delProduct = async (id) => {
+    try {
+      const response = await axios.delete(`${API_BASE}/api/${API_PATH}/admin/product/${id}`);
+      alert(`${response.data.message}，${templateProduct.title}`);
+      console.log(response.data);
+      getProducts();
+      closeModal();
+    } catch (error) {
+      console.log(error.response);
+    }
+  }
+
+  //登入功能api
   const onSubmit = async (e) => {
     try {
       e.preventDefault();
@@ -124,6 +171,7 @@ function App() {
     }
   }
   
+  //cookie 設定
   useEffect(() => {
     const token = document.cookie
     .split("; ")
@@ -211,8 +259,8 @@ function App() {
                       <td className={`${product.is_enabled && 'text-primary'}`}>{product.is_enabled ? '啟用' : '未啟用'}</td>
                       <td>
                         <div className="btn-group" role="group" aria-label="Basic outlined example">
-                          <button type="button" className="btn btn-outline-primary btn-sm" onClick={() => openModal('edit',product)}>編輯</button>
-                          <button type="button" className="btn btn-outline-danger btn-sm">刪除</button>
+                          <button type="button" className="btn btn-outline-success btn-sm" onClick={() => openModal('edit',product)}>編輯</button>
+                          <button type="button" className="btn btn-outline-danger btn-sm" onClick={() => openModal('delete', product)}>刪除</button>
                         </div>
                       </td>
                     </tr>
@@ -226,9 +274,9 @@ function App() {
       <div className="modal fade" id="productModal" tabIndex="-1" aria-labelledby="productModalLabel" aria-hidden="true" ref={productModalRef}>
         <div className="modal-dialog modal-xl">
           <div className="modal-content border-0">
-            <div className="modal-header bg-dark text-white">
+            <div className={`modal-header bg-${modalType === 'delete' ? 'danger' : modalType === 'edit' ? 'success' : 'primary'} text-white`}>
               <h5 id="productModalLabel" className="modal-title">
-                <span>新增產品</span>
+                <span>{modalType === 'delete' ? '刪除' : modalType === 'edit' ? '編輯' : '新增'}產品</span>
               </h5>
               <button
                 type="button"
@@ -238,7 +286,10 @@ function App() {
                 ></button>
             </div>
             <div className="modal-body">
-              <div className="row">
+              {
+                modalType === 'delete' ? (
+                  <p className="fs-4">確定要刪除<span className="text-danger">{templateProduct.title}</span>嗎？</p>
+                ) : (<div className="row">
                 <div className="col-sm-4">
                   <div className="mb-2">
                     <div className="mb-3">
@@ -311,6 +362,7 @@ function App() {
                       placeholder="請輸入標題"
                       value={templateProduct.title}
                       onChange={(e) => handleModalInputChange(e)}
+                      disabled={modalType === 'edit'} //補充：鎖定標題不可更改（條件鎖定）
                       />
                   </div>
 
@@ -352,7 +404,7 @@ function App() {
                         className="form-control"
                         placeholder="請輸入原價"
                         value={templateProduct.origin_price}
-                        onchange={(e) => handleModalInputChange(e)} 
+                        onChange={(e) => handleModalInputChange(e)} 
                         />
                     </div>
                     <div className="mb-3 col-md-6">
@@ -365,7 +417,7 @@ function App() {
                         className="form-control"
                         placeholder="請輸入售價"
                         value={templateProduct.price}
-                        onchange={(e) => handleModalInputChange(e)}
+                        onChange={(e) => handleModalInputChange(e)}
                         />
                     </div>
                   </div>
@@ -379,7 +431,7 @@ function App() {
                       className="form-control"
                       placeholder="請輸入產品描述"
                       value={templateProduct.description}
-                      onchange={(e) => handleModalInputChange(e)}
+                      onChange={(e) => handleModalInputChange(e)}
                       ></textarea>
                   </div>
                   <div className="mb-3">
@@ -390,7 +442,7 @@ function App() {
                       className="form-control"
                       placeholder="請輸入說明內容"
                       value={templateProduct.content}
-                      onchange={(e) => handleModalInputChange(e)}
+                      onChange={(e) => handleModalInputChange(e)}
                       ></textarea>
                   </div>
                   <div className="mb-3">
@@ -401,7 +453,7 @@ function App() {
                         className="form-check-input"
                         type="checkbox"
                         checked={templateProduct.is_enabled}
-                        onchange={(e) => handleModalInputChange(e)}
+                        onChange={(e) => handleModalInputChange(e)}
                         />
                       <label className="form-check-label" htmlFor="is_enabled">
                         是否啟用
@@ -409,18 +461,19 @@ function App() {
                     </div>
                   </div>
                 </div>
-              </div>
+              </div>)
+              }
             </div>
             <div className="modal-footer">
-              <button
-                type="button"
-                className="btn btn-outline-secondary"
-                data-bs-dismiss="modal"
-                onClick={() => closeModal()}
-                >
-                取消
-              </button>
-              <button type="button" className="btn btn-primary">確認</button>
+              {
+                modalType === 'delete' ? (
+                  <button type="button" className="btn btn-danger" onClick={() => delProduct(templateProduct.id)}>刪除</button>) : (
+                    <>
+                    <button type="button" className="btn btn-outline-secondary" data-bs-dismiss="modal" onClick={() => closeModal()}>取消</button>
+                    <button type="button" className="btn btn-primary" onClick={() => updateProduct(templateProduct.id)}>確認</button>
+                    </>
+                  )
+              }
             </div>
           </div>
         </div>
@@ -428,6 +481,6 @@ function App() {
 
     </>
   );
-}
+} 
 
 export default App;
