@@ -23,6 +23,7 @@ const INITIAL_TEMPLATE_DATA ={
   is_enabled: false,
   imageUrl: "",
   imagesUrl: [],
+  size:"",
 }
 
 function App() {
@@ -66,35 +67,6 @@ function App() {
     setTemplateProduct(INITIAL_TEMPLATE_DATA);
   }
 
-  // 欄位名稱對映，用於產生友善的錯誤訊息
-  const fieldLabels = {
-    title: '標題',
-    category: '分類',
-    unit: '單位',
-    origin_price: '原價',
-    price: '售價',
-    imageUrl: '主圖',
-  };
-
-  // 驗證所有必填欄位
-  // 說明：
-  // - required 陣列定義哪些欄位為必填
-  // - 若欄位為空（空字串 / null / undefined），則在 newErrors 中加入錯誤訊息
-  // - 將 newErrors 設到 state（供 UI 顯示 is-invalid 與 invalid-feedback）
-  // - 回傳 boolean（true 表示全部通過）
-  const validateAll = () => {
-    const required = ['title','category','unit','origin_price','price','imageUrl'];
-    const newErrors = {};
-    required.forEach((k) => {
-      const v = templateProduct[k];
-      if (v === '' || v === null || v === undefined) {
-        newErrors[k] = `${fieldLabels[k]} 為必填`;
-      }
-    });
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  }
-
   //取得產品列表api
   const getProducts = async (page =1) => {
     try {
@@ -102,7 +74,6 @@ function App() {
       setProducts(response.data.products)
       setPagination(response.data.pagination)
     } catch (error) {
-      // console.log(error.response)
     }
   }
 
@@ -153,7 +124,7 @@ function App() {
   const openModal = (type, product) => {
     setModalType(type);
     setTemplateProduct((pre) => ({
-      ...pre,
+      ...INITIAL_TEMPLATE_DATA, //1. 確保資料完整性：API 回傳的舊產品資料可能缺少新增的欄位 2. 提供安全的預設值：避免 undefined 造成的錯誤 3. 未來擴充性：新增表單欄位時不容易出錯
       ...product,
     }));
     productModalRef.current.show();

@@ -10,9 +10,9 @@ function ProductModal({
     templateProduct,
     getProducts,
     closeModal,
-    errors,
 }) {
   const [tempData,setTempData] = useState(templateProduct); //建立新的tempData來接收templateProduct的資料,並用tempData渲染資料
+  const [errors, setErrors] = useState({});
 
   useEffect(() => {
     setTempData(templateProduct);
@@ -144,6 +144,29 @@ function ProductModal({
       
     }
   }
+
+  const validateAll = () => {
+    const required = ['title','category','unit','origin_price','price','imageUrl'];
+    const newErrors = {};
+    required.forEach((k) => {
+      const v = tempData[k];
+      if (v === '' || v === null || v === undefined) {
+        newErrors[k] = `${fieldLabels[k]} 為必填`;
+      }
+    });
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  }
+
+  // 欄位名稱對映，用於產生友善的錯誤訊息
+    const fieldLabels = {
+      title: '標題',
+      category: '分類',
+      unit: '單位',
+      origin_price: '原價',
+      price: '售價',
+      imageUrl: '主圖',
+    };
 
     return(
       <div className="modal fade" id="productModal" tabIndex="-1" aria-labelledby="productModalLabel" aria-hidden="true">
@@ -354,6 +377,24 @@ function ProductModal({
                         是否啟用
                       </label>
                     </div>
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-check-label" htmlFor="size">
+                      尺寸
+                    </label>
+                    <select
+                      id="size"
+                      name="size"
+                      className="form-select"
+                      aria-label="Default select example"
+                      value={tempData.size}
+                      onChange={(e)=> handleModalInputChange(e)}
+                    >
+                      <option value="">請選擇</option>
+                      <option value="lg">特大號公仔(50cm)</option>
+                      <option value="md">桌上型公仔(20cm)</option>
+                      <option value="sm">袖珍型公仔(8cm)</option>
+                    </select>
                   </div>
                 </div>
               </div>)
