@@ -5,6 +5,7 @@ import * as bootstrap from "bootstrap";
 import "./assets/style.css";
 import ProductModal from './components/ProductModal';
 import Pagination from './components/Pagination';
+import Login from './views/Login.jsx';
 
 
 const API_BASE = import.meta.env.VITE_API_BASE;
@@ -25,11 +26,6 @@ const INITIAL_TEMPLATE_DATA ={
 }
 
 function App() {
-
-  const [formData,setFormData] = useState({
-    username:'',
-    password:''
-  });
 
   const [isAuth,setIsAuth] = useState(false);
 
@@ -70,33 +66,6 @@ function App() {
     setTemplateProduct(INITIAL_TEMPLATE_DATA);
   }
 
-  const handleInputChange = (e) => {
-    const {name,value} = e.target
-    setFormData((preData) => ({
-      ...preData,
-      [name]:value,
-    }))
-  }
-
-  // ❌ 錯誤：直接修改 state 物件 // ⭕ 正確：用 setState 並回傳新物件 //用解構方式
-  // 處理 modal 內欄位變動
-  // 說明：
-  // - 更新 `templateProduct` 的對應欄位值（不直接 mutate，而是回傳新物件）
-  // - 若該欄位先前有驗證錯誤，則在使用者修改時移除該錯誤（即時清除錯誤提示）
-  const handleModalInputChange = (e) => {
-    const {name,value,checked,type} = e.target
-    const val = type === 'checkbox' ? checked : value;
-    setTemplateProduct((preData) => ({
-      ...preData,
-      [name]: val,
-    }))
-    setErrors((prev) => {
-      const next = { ...prev };
-      delete next[name];
-      return next;
-    })
-  }
-
   // 欄位名稱對映，用於產生友善的錯誤訊息
   const fieldLabels = {
     title: '標題',
@@ -126,51 +95,6 @@ function App() {
     return Object.keys(newErrors).length === 0;
   }
 
-  const handleModalImageChange = (index,value) => {
-    setTemplateProduct((pre) => {
-      const newImage = [...pre.imagesUrl]; // [...pre.imagesUrl] 解構取得原本的img陣列
-      newImage[index] = value
-
-      //因為是新增，所以要 不等於 空值 時 // 正在輸入的是最後一筆 // 最多五筆
-      if(value !== '' && index === newImage.length-1 && newImage.length < 5) {
-        newImage.push('') // 在陣列最後新增一個空字串
-      }
-
-      if(value === '' && newImage.length > 1 && newImage[newImage.length-1] === '') {
-        newImage.pop() // 移除陣列最後一個元素
-      }
-
-      return{
-        ...pre,
-        imagesUrl: newImage,
-      }
-    })
-  }
-
-  //優化使用者體驗：新增照片欄位
-  const handleAddImage = () => {  
-    setTemplateProduct((pre) => {
-      const newImage = [...pre.imagesUrl];
-      newImage.push('') // 在陣列最後新增一個空字串
-      return{
-        ...pre,
-        imagesUrl: newImage,
-      }
-    })
-  }
-  
-  //優化使用者體驗：刪除照片欄位  
-  const handleARemoveImage = () => {
-    setTemplateProduct((pre) => {
-      const newImage = [...pre.imagesUrl];
-      newImage.pop() // 移除陣列最後一個元素
-      return{
-        ...pre,
-        imagesUrl: newImage,
-      }
-    })
-  }
-
   //取得產品列表api
   const getProducts = async (page =1) => {
     try {
@@ -182,100 +106,6 @@ function App() {
     }
   }
 
-  //更新與新增產品api
-  const updateProduct = async (id) => {  //差別在id,所以（）寫id做傳入
-    // 先驗證必填欄位
-    if (!validateAll()) return;
-
-    let url =`${API_BASE}/api/${API_PATH}/admin/product`
-    let method = 'post'
-
-    if(modalType === 'edit'){
-      url = `${API_BASE}/api/${API_PATH}/admin/product/${id}`
-      method = 'put'
-    }
-
-    const productData = {
-      data:{
-        ...templateProduct,
-        origin_price: Number(templateProduct.origin_price), //做型態轉換
-        price: Number(templateProduct.price), //做型態轉換
-        is_enabled: templateProduct.is_enabled ? 1 : 0, //true回傳１,false回傳0
-        imagesUrl:[...templateProduct.imagesUrl.filter(url => url !== "")], //防呆用
-      }
-    }
-
-    try {
-      const response = await axios[method](url, productData); //小技巧 []裡面放上面設定的變數method,這樣就可以共用了
-      // console.log(response.data);
-      alert(`${response.data.message}，${templateProduct.title}`);
-      getProducts();
-      closeModal();
-    } catch (error) {
-      // console.log(error.response);
-    }
-
-  }
-
-  //刪除產品api
-  const delProduct = async (id) => {
-    try {
-      const response = await axios.delete(`${API_BASE}/api/${API_PATH}/admin/product/${id}`);
-      alert(`${response.data.message}，${templateProduct.title}`);
-      // console.log(response.data);
-      getProducts();
-      closeModal();
-    } catch (error) {
-      // console.log(error.response);
-    }
-  }
-
-  //上傳圖片api
-  const uploadImage = async (e) => {
-    const file = e.target.files?.[0]
-    if(!file) { //防呆提示
-      return
-    }
-
-    try {
-      const formData = new FormData()
-      formData.append('file-to-upload', file)
-
-      const response = await axios.post(`${API_BASE}/api/${API_PATH}/admin/upload`, formData) 
-      setTemplateProduct((pre)=>({
-        ...pre,
-        imageUrl: response.data.imageUrl,
-      }));
-    } catch (error) {
-      
-    }
-  }
-
-  //登入功能api
-  const onSubmit = async (e) => {
-    try {
-      e.preventDefault();
-      const response = await axios.post(`${API_BASE}/admin/signin`,formData)
-
-      const {token, expired} = response.data
-      document.cookie = `hexToken=${token};expires=${new Date(expired)};`;
-      axios.defaults.headers.common['Authorization'] = token;
-
-      // 雙重驗證：拿到 token 後再呼叫 checkLogin 確認
-      const ok = await checkLogin();
-      if (ok) {
-        getProducts();
-        setIsAuth(true);
-      } else {
-        alert('登入失敗（驗證未通過），請重新登入');
-        handleLogout();
-      }
-    } catch (error) {
-      setIsAuth(false)
-      alert('登入失敗\n請檢查信箱或密碼');
-    }
-  }
-  
   //cookie 設定
   useEffect(() => {
     const token = document.cookie
@@ -335,20 +165,9 @@ function App() {
 
   return (
     <>
-    {!isAuth ? (<div className="container login">
-        <h1 className='mb-3 text-secondary-emphasis'>請先登入</h1>
-        <form className="form-floating" onSubmit={(e) => onSubmit(e)}>
-          <div className="form-floating mb-3">
-            <input type="email" className="form-control" name="username" placeholder="name@example.com" value={formData.username} onChange={(e) => handleInputChange(e)}/>
-            <label htmlFor="username">Email address</label>
-          </div>
-          <div className="form-floating mb-3 outline-success">
-            <input type="password" className="form-control" name="password" placeholder="Password" value={formData.password} onChange={(e) => handleInputChange(e)}/>
-            <label htmlFor="password">Password</label>
-          </div>
-          <button type="submit" className="btn btn-outline-secondary w-100">登入</button>
-        </form>
-      </div>) :(
+    {!isAuth ? (
+      <Login getProducts={getProducts} setIsAuth={setIsAuth} />
+    ) :(
         <div className='container'>
           <h2 className='mt-5 mb-2'>產品列表</h2>
           <div className="text-end mt-4 me-5">
@@ -395,13 +214,7 @@ function App() {
     <ProductModal 
       modalType={modalType} //名字可以改不同，但通常會取一樣的比較方便
       templateProduct={templateProduct}
-      handleModalInputChange={handleModalInputChange}
-      handleModalImageChange={handleModalImageChange}
-      handleAddImage={handleAddImage}
-      handleARemoveImage={handleARemoveImage}
-      updateProduct={updateProduct}
-      delProduct={delProduct}
-      uploadImage={uploadImage}
+      getProducts={getProducts}
       closeModal={closeModal}
       errors={errors}
     />
